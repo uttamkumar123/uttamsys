@@ -1,0 +1,99 @@
+#!/usr/local/addon/envs/python_custom/bin/python
+# -*- coding: utf-8 -*-
+import pyhs2,string,os,re, requests, json, subprocess, sys
+from Crypto.Cipher import AES
+import base64
+import argparse
+
+def build_arg_parser():
+    """
+    Builds a standard argument parser with arguments for taking inputs for ambari rest api url and host_component
+    -u url
+    -m host_component
+    """
+    parser = argparse.ArgumentParser(
+        description='Standard Arguments for pullimg metrics via Ambari REST API')
+
+    parser.add_argument('-l', '--hiveserver2',
+                        required=True,
+                        action='store',
+                        help='hiveserver2 hostname')
+     
+    parser.add_argument('-p', '--hiveport',
+                        required=True,
+                        action='store',
+                        help='hiveserver2 port')
+
+    parser.add_argument('-d', '--hivedb',
+                        required=False,
+                        action='store',
+                        help='hive db name')
+
+    parser.add_argument('-c', '--cmd',
+                        required=False,
+                        action='store',
+                        help='hive command to be fired')
+
+    return parser
+
+def passwddecrypt(passw):
+    # the block size for the cipher object; must be 16 per FIPS-197
+    BLOCK_SIZE = 16
+
+    PADDING = '{'
+
+    # one-liner to sufficiently pad the text to be encrypted
+    pad = lambda s: s + (BLOCK_SIZE - len(s) % BLOCK_SIZE) * PADDING
+
+    # one-liners to decrypt/decode a string
+    DecodeAES = lambda c, e: c.decrypt(base64.b64decode(e)).rstrip(PADDING)
+    # Using the below secret key
+    secret = '1>G??XRL;e?;۠?n'
+
+    # create a cipher object using the random secret
+    cipher = AES.new(secret)
+    encoded = passw
+    # decode the encoded string
+    decoded = DecodeAES(cipher, encoded)
+    return decoded
+
+
+passwd = "**************"
+PARSER = build_arg_parser()
+MY_ARGS = PARSER.parse_args()
+hiveserver = MY_ARGS.hiveserver2
+db = MY_ARGS.hivedb
+port = MY_ARGS.hiveport
+passw = passwddecrypt(passwd)
+cmdd = MY_ARGS.cmd
+
+if db:
+   conn=pyhs2.connect(host=""+hiveserver+"",
+               port=""+port+"",
+               authMechanism="PLAIN",
+               user='**********',
+               password=""+passw+"",
+               database=""+db+""
+               )
+else:
+   conn=pyhs2.connect(host=""+hiveserver+"",
+               port=""+port+"",
+               authMechanism="PLAIN",
+               user='svc_prodrefresh',
+               password=""+passw+""
+               )
+cur=conn.cursor()
+#Show databases
+#print cur.getDatabases()
+cur.execute(""+cmdd+"")
+#print cur.getSchema()
+col_names=[n['columnName'] for n in cur.getSchema()]
+str_name=''
+for m in col_names:
+    str_name=str_name+m+' '
+    print str_name
+
+#print cur.fetch()
+for i in cur.fetchall():
+    str1 = ' '.join(str(e) for e in i)
+    print str1
